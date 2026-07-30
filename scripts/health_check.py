@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import os
 
-
 REQUIRED_ENV_VARS = (
     "TWELVELABS_API_KEY",
     "OPENAI_API_KEY",

@@ -26,6 +26,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+  "build",
   "pytest",
   "pytest-mock",
   "ruff",
@@ -34,6 +35,9 @@ dev = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+video_context_graph = ["graph/*.cypher"]
 
 [tool.pytest.ini_options]
 addopts = "-q"

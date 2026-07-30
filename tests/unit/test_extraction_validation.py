@@ -8,7 +8,6 @@ from pydantic import ValidationError
 
 from video_context_graph.contracts import GraphExtraction
 
-
 FIXTURE_DIR = Path(__file__).resolve().parents[1] / "fixtures"
 
 
@@ -45,4 +44,30 @@ def test_graph_extraction_rejects_unsorted_scene_ordinals() -> None:
     payload["scenes"][1]["ordinal"] = 1
 
     with pytest.raises(ValidationError, match="ordinals must be sorted"):
+        GraphExtraction.model_validate(payload)
+
+
+def test_graph_extraction_rejects_duplicate_entity_ids() -> None:
+    payload = load_graph_fixture()
+    payload["entities"][1]["local_id"] = payload["entities"][0]["local_id"]
+
+    with pytest.raises(ValidationError, match="entity local IDs must be unique"):
+        GraphExtraction.model_validate(payload)
+
+
+def test_graph_extraction_rejects_event_outside_its_scene() -> None:
+    payload = load_graph_fixture()
+    payload["events"][0]["end_sec"] = 13
+
+    with pytest.raises(ValidationError, match="timestamps must be within scene"):
+        GraphExtraction.model_validate(payload)
+
+
+def test_graph_extraction_rejects_relationship_self_loop() -> None:
+    payload = load_graph_fixture()
+    payload["relationships"][0]["target_entity_id"] = payload["relationships"][0][
+        "source_entity_id"
+    ]
+
+    with pytest.raises(ValidationError, match="self-loops are not allowed"):
         GraphExtraction.model_validate(payload)

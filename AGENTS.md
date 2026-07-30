@@ -8,6 +8,9 @@ SceneThread is a Python 3.11 Streamlit application that ingests video, extracts 
 
 - Streamlit provides the demo UI.
 - TwelveLabs handles video upload, segmentation, indexing, and semantic moment search.
+- Strands visibly orchestrates sponsor handoffs through named tools and agents.
+- TwelveLabs ingestion and Neo4j indexing remain deterministic operations behind safe
+  Strands tool boundaries.
 - Strands Agents with OpenAI handle graph normalization and question answering.
 - Pydantic models in `src/video_context_graph/contracts/` define shared interfaces.
 - Neo4j writes and reads use deterministic, parameterized code.
@@ -20,10 +23,13 @@ SceneThread is a Python 3.11 Streamlit application that ingests video, extracts 
 - Graph and Neo4j: `src/video_context_graph/graph/`, `src/video_context_graph/integrations/neo4j_client.py`, `scripts/init_graph.py`, and related tests.
 - Agents and UI: `app.py`, `src/video_context_graph/agents/`, `src/video_context_graph/ui/`, `src/video_context_graph/integrations/strands_openai.py`, and related tests.
 - Fixtures: `tests/fixtures/` are shared; coordinate schema changes before editing.
+- Frozen cross-team signatures: `docs/interface_contracts.md` and
+  `src/video_context_graph/contracts/services.py`.
 
 ## Contracts
 
 - Do not change public contract field names or types without team approval.
+- Do not change the frozen service signatures without team approval.
 - Validate confidence values between `0` and `1`.
 - Ensure timestamps satisfy `0 <= start_sec < end_sec`.
 - Keep scene ordinals unique and sorted.
@@ -50,3 +56,5 @@ SceneThread is a Python 3.11 Streamlit application that ingests video, extracts 
 - Never log API keys, Neo4j passwords, or other secrets.
 - Fail clearly when credentials or required external resources are missing.
 - Avoid fake success fallbacks; fixture mode must be explicit.
+- Preserve a safe, user-visible execution trace showing the Strands stage and sponsor
+  handoff without exposing chain-of-thought.

@@ -77,18 +77,22 @@ Do not spend hackathon time on:
 ```mermaid
 flowchart LR
     U[User uploads video] --> UI[Streamlit App]
-    UI --> P[Pipeline Controller]
+    UI --> P[Strands Pipeline Coordinator]
 
-    P --> TL1[TwelveLabs Asset Upload]
+    P --> IT[ingest_video Tool]
+    IT --> TL1[TwelveLabs Asset Upload]
     TL1 --> TL2[Pegasus 1.5 Segmentation]
     TL1 --> TL3[Marengo Indexing]
 
     TL2 --> RAW[Raw timestamped segments]
-    RAW --> SA1[Strands Extraction Agent]
+    RAW --> P
+    P --> SA1[Strands Extraction Agent]
     SA1 --> OA1[OpenAI Structured Reasoning]
     OA1 --> GX[Validated GraphExtraction]
 
-    GX --> GW[Neo4j Graph Writer]
+    GX --> P
+    P --> IX[index_graph Tool]
+    IX --> GW[Deterministic Neo4j Graph Writer]
     GW --> N4J[(Neo4j AuraDB)]
 
     UI --> Q[User Question]
@@ -112,6 +116,9 @@ Use AI for interpretation and reasoning, but use deterministic code for infrastr
 - OpenAI should normalize extracted information, resolve aliases, choose relevant tools, and create final answers.
 - Neo4j writes should use fixed, parameterized Cypher templates.
 - The QA agent should use safe read tools rather than unrestricted generated Cypher in the MVP.
+- Strands should visibly coordinate the sponsor stages through named tool boundaries.
+- The UI should show sponsor handoffs, stage status, duration, and compact result summaries
+  without exposing chain-of-thought.
 
 ---
 
@@ -287,32 +294,53 @@ QA tools:
 - `find_entity_connections`
 - `get_video_overview`
 
-Optional ingestion tool wrappers for sponsor visibility:
+Required pipeline tools for sponsor-visible orchestration:
 
+- `ingest_video`
+- `index_graph`
 - `get_ingestion_status`
 - `get_graph_statistics`
 
+`ingest_video` wraps deterministic TwelveLabs upload, polling, segmentation, and indexing.
+`index_graph` accepts only a validated `GraphExtraction` and wraps deterministic,
+parameterized Neo4j writes. These tools make sponsor handoffs visible without giving the
+model unrestricted infrastructure authority.
+
 ### Orchestration choice
 
-For the MVP, use a code-defined workflow with Strands agents at the reasoning stages instead of a highly autonomous multi-agent swarm.
+For the MVP, use a code-defined Strands coordinator instead of a highly autonomous
+multi-agent swarm. The coordinator calls named stage tools and the Extraction Agent in a
+fixed order.
 
 Pipeline:
 
 ```text
-Deterministic upload and segmentation
+Strands Pipeline Coordinator
+    -> ingest_video tool
+         -> deterministic TwelveLabs upload, segmentation, and indexing
     -> Strands Extraction Agent
+         -> OpenAI structured GraphExtraction
     -> deterministic validation
-    -> deterministic Neo4j write
-    -> Strands QA Agent for user questions
+    -> index_graph tool
+         -> deterministic Neo4j write
+    -> Strands QA Agent
+         -> TwelveLabs semantic search and safe Neo4j reads
 ```
 
-This is more reliable than allowing an agent to decide whether a file should be uploaded or whether a database transaction should be committed.
+The order and infrastructure behavior remain code-defined. This is more reliable than
+allowing an agent to decide whether a file should be uploaded or whether a database
+transaction should be committed, while still making Strands orchestration explicit to
+users and judges.
 
 ### Demonstrating Strands to judges
 
 The demo should visibly show:
 
+- The Strands Pipeline Coordinator starting and completing each stage.
+- The handoff to the TwelveLabs ingestion tool.
+- The handoff from timestamped TwelveLabs evidence to the Extraction Agent.
 - The Strands extraction step.
+- The validated `GraphExtraction` handoff to the Neo4j indexing tool.
 - The registered custom tools.
 - A QA trace listing which tool was used.
 - The final answer grounded in tool output.
@@ -324,6 +352,15 @@ Do not expose internal chain-of-thought. Display only a safe execution trace suc
 2. Retrieved Scenes 4 and 5 from Neo4j
 3. Checked events before Scene 5
 4. Generated answer with two timestamp references
+```
+
+The ingestion trace should use the same safe format:
+
+```text
+1. Strands coordinator started TwelveLabs ingestion
+2. TwelveLabs returned 8 timestamped scenes
+3. Extraction Agent produced a validated GraphExtraction
+4. Neo4j indexing tool wrote 42 nodes and 67 relationships
 ```
 
 ---
@@ -740,6 +777,7 @@ Benefits:
 
 ### Stage 2: Upload and asset readiness
 
+- Run behind the sponsor-visible `ingest_video` Strands tool boundary.
 - Upload through TwelveLabs.
 - Poll with exponential backoff and a maximum attempt count.
 - Save asset ID immediately.
@@ -761,6 +799,7 @@ Benefits:
 
 ### Stage 5: Normalize
 
+- Show the handoff from TwelveLabs evidence to the Strands Extraction Agent.
 - Pass compact video metadata and raw segments to the Strands Extraction Agent.
 - Request `GraphExtraction` structured output.
 - Validate the result.
@@ -769,6 +808,8 @@ Benefits:
 
 ### Stage 6: Write graph
 
+- Run behind the sponsor-visible `index_graph` Strands tool boundary.
+- Accept only an already validated `GraphExtraction`.
 - Create or update the `Video` node.
 - Batch scenes with `UNWIND`.
 - Batch entities with `UNWIND`.
@@ -897,6 +938,7 @@ Components:
 - Pipeline status display.
 - Stage timings.
 - Error display with retry option.
+- Sponsor handoff trace showing Strands, TwelveLabs, OpenAI, and Neo4j stages.
 
 After success, display:
 
@@ -995,6 +1037,8 @@ video-context-graph/
 
   docs/
     architecture.md
+    interface_contracts.md
+    parallel_start.md
     graph_schema.md
     demo_script.md
     test_video_matrix.md
@@ -1144,6 +1188,8 @@ Deliverables:
 - Streamlit tabs.
 - Health panel.
 - Final integration tests.
+- Strands Pipeline Coordinator and sponsor-visible stage tools.
+- Safe execution-trace rendering for ingestion, extraction, indexing, and QA.
 
 ## 12.2 Shared-file rule
 
@@ -1203,6 +1249,7 @@ Checkpoint 1:
 
 - All modules import successfully.
 - Fixture-based pipeline runs without external APIs.
+- The fixture run displays the same Strands stage and sponsor handoff trace as live mode.
 
 Checkpoint 2:
 
@@ -1553,6 +1600,8 @@ Developer B:
 Developer C:
 
 - Strands OpenAI provider.
+- Strands Pipeline Coordinator.
+- Sponsor-visible `ingest_video` and `index_graph` tool wrappers.
 - Extraction agent.
 - QA agent and tools.
 - Streamlit tab skeleton.
@@ -1573,6 +1622,7 @@ Tasks:
 - Validate GraphExtraction.
 - Write to AuraDB.
 - Display graph statistics.
+- Display the complete Strands and sponsor handoff trace.
 - Answer five questions.
 
 Exit criteria:
@@ -1606,12 +1656,14 @@ Tasks:
 - Create a two-minute backup demo path using cached data.
 - Add architecture diagram to README.
 - Add sponsor-tool usage slide or section.
+- Rehearse the visible Strands coordinator and sponsor handoff sequence.
 - Rehearse the complete flow.
 
 Exit criteria:
 
 - Live path and cached fallback path both work.
 - Every sponsor tool has a clear, visible role.
+- Fixture and live paths display the same stage names and handoff order.
 
 ---
 
@@ -1671,12 +1723,15 @@ Show:
 
 - File and domain profile.
 - Pipeline stages.
+- Strands Pipeline Coordinator calling the TwelveLabs ingestion tool.
 - TwelveLabs asset and indexing completion.
 
 ### Step 3: Show extraction
 
 Show:
 
+- The handoff from TwelveLabs timestamped evidence to the Extraction Agent.
+- OpenAI structured extraction through Strands.
 - Number of scenes.
 - Number of entities.
 - Number of events.
@@ -1684,7 +1739,8 @@ Show:
 
 ### Step 4: Show Neo4j graph
 
-Focus on one repeated person, object, concept, player, ingredient, or prop.
+First show the validated `GraphExtraction` handoff to the deterministic Neo4j indexing
+tool. Then focus on one repeated person, object, concept, player, ingredient, or prop.
 
 Explain:
 
@@ -1716,7 +1772,7 @@ Display scene IDs and timestamps, not only a generated paragraph.
 
 - TwelveLabs sees and searches the video.
 - OpenAI interprets and reasons.
-- Strands chooses and coordinates tools.
+- Strands visibly coordinates each sponsor handoff and chooses safe QA tools.
 - Neo4j remembers and connects the context.
 
 ---
@@ -1732,6 +1788,8 @@ The MVP is complete when all conditions below are true.
 - The app receives timestamped scene segments.
 - The app indexes the video for search.
 - A Strands agent using OpenAI produces a validated graph extraction.
+- A Strands Pipeline Coordinator visibly hands work from TwelveLabs to OpenAI-backed
+  extraction and then to deterministic Neo4j indexing.
 - The app writes nodes and relationships to Neo4j.
 - The graph write is idempotent.
 - A user can ask natural-language questions.
@@ -1761,6 +1819,8 @@ The MVP is complete when all conditions below are true.
 - Five demo questions are tested.
 - A cached fallback is available.
 - Sponsor usage is visible and explainable.
+- The UI shows a safe Strands execution trace with sponsor names, stage status, and
+  timestamped evidence without chain-of-thought.
 
 ---
 
@@ -1847,6 +1907,9 @@ Only attempt these after the MVP is stable.
 ### Developer C
 
 - [ ] Configure Strands OpenAI Responses provider.
+- [ ] Implement the code-defined Strands Pipeline Coordinator.
+- [ ] Expose deterministic ingestion as an `ingest_video` Strands tool.
+- [ ] Expose validated deterministic graph writing as an `index_graph` Strands tool.
 - [ ] Implement Extraction Agent.
 - [ ] Implement QA Agent.
 - [ ] Implement custom QA tools.
@@ -1854,6 +1917,7 @@ Only attempt these after the MVP is stable.
 - [ ] Implement health panel.
 - [ ] Integrate pipeline callbacks into UI.
 - [ ] Add answer evidence rendering.
+- [ ] Add sponsor handoff and safe execution-trace rendering.
 - [ ] Run full end-to-end integration.
 
 ### Finalization
@@ -1919,11 +1983,17 @@ Build the simplest architecture that proves the full sponsor story:
 
 ```text
 Video
-  -> TwelveLabs timestamped scenes and semantic search
+  -> Strands Pipeline Coordinator
+  -> ingest_video tool using deterministic TwelveLabs operations
   -> Strands Extraction Agent using OpenAI structured reasoning
+  -> index_graph tool using deterministic Neo4j writes
   -> Neo4j context graph
-  -> Strands QA Agent using TwelveLabs and Neo4j tools
+  -> Strands QA Agent using TwelveLabs and safe Neo4j tools
   -> grounded natural-language answer with timestamps
 ```
 
-Keep infrastructure deterministic, keep the graph schema domain-neutral, keep model output structured, keep database queries safe, and keep each developer inside an owned directory. This gives the team the best chance of completing a stable hackathon application while preserving enough flexibility to test many video types before choosing the final demo.
+Keep infrastructure deterministic, make Strands orchestration and sponsor handoffs
+visible, keep the graph schema domain-neutral, keep model output structured, keep
+database queries safe, and keep each developer inside an owned directory. This gives the
+team the best chance of completing a stable hackathon application while preserving enough
+flexibility to test many video types before choosing the final demo.

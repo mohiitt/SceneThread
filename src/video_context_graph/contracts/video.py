@@ -1,0 +1,127 @@
+"""Video ingestion, search, health, and graph-write boundary contracts."""
+
+from __future__ import annotations
+
+from typing import Literal
+
+from pydantic import BaseModel, Field, model_validator
+
+
+class IngestionRequest(BaseModel):
+    video_id: str = Field(min_length=1)
+    title: str = Field(min_length=1)
+    source_type: Literal["upload", "url"]
+    source_ref: str = Field(min_length=1)
+    domain_hint: str = "Auto"
+    force_reprocess: bool = False
+
+
+class VideoSegment(BaseModel):
+    segment_id: str = Field(min_length=1)
+    start_sec: float = Field(ge=0)
+    end_sec: float
+    summary: str = Field(min_length=1)
+    location: str | None = None
+    participants: list[str] = Field(default_factory=list)
+    objects: list[str] = Field(default_factory=list)
+    actions: list[str] = Field(default_factory=list)
+    speech_summary: str | None = None
+    on_screen_text: list[str] = Field(default_factory=list)
+    topics: list[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
+    sentiment: str = "unknown"
+
+    @model_validator(mode="after")
+    def validate_timestamp_order(self) -> VideoSegment:
+        if self.start_sec >= self.end_sec:
+            raise ValueError("start_sec must be less than end_sec")
+        return self
+
+
+class SegmentCollection(BaseModel):
+    video_id: str = Field(min_length=1)
+    duration_sec: float = Field(gt=0)
+    segments: list[VideoSegment]
+
+    @model_validator(mode="after")
+    def validate_segments(self) -> SegmentCollection:
+        segment_ids = [segment.segment_id for segment in self.segments]
+        if len(segment_ids) != len(set(segment_ids)):
+            raise ValueError("segment IDs must be unique")
+
+        starts = [segment.start_sec for segment in self.segments]
+        if starts != sorted(starts):
+            raise ValueError("segments must be sorted by start_sec")
+
+        outside_video = [
+            segment.segment_id
+            for segment in self.segments
+            if segment.end_sec > self.duration_sec
+        ]
+        if outside_video:
+            raise ValueError(f"segments exceed video duration: {outside_video}")
+        return self
+
+
+class IngestionResult(BaseModel):
+    video_id: str = Field(min_length=1)
+    asset_id: str = Field(min_length=1)
+    index_id: str = Field(min_length=1)
+    indexed_asset_id: str = Field(min_length=1)
+    segmentation_task_id: str = Field(min_length=1)
+    segments: SegmentCollection
+    search_available: bool = True
+
+    @model_validator(mode="after")
+    def validate_video_identity(self) -> IngestionResult:
+        if self.video_id != self.segments.video_id:
+            raise ValueError("ingestion result and segment collection video IDs must match")
+        return self
+
+
+class SearchRequest(BaseModel):
+    video_id: str = Field(min_length=1)
+    query: str = Field(min_length=1)
+    top_k: int = Field(default=5, ge=1, le=20)
+
+
+class SearchMoment(BaseModel):
+    scene_id: str | None = None
+    start_sec: float = Field(ge=0)
+    end_sec: float
+    score: float = Field(ge=0, le=1)
+    summary: str = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_timestamp_order(self) -> SearchMoment:
+        if self.start_sec >= self.end_sec:
+            raise ValueError("start_sec must be less than end_sec")
+        return self
+
+
+class SearchResults(BaseModel):
+    query: str = Field(min_length=1)
+    results: list[SearchMoment]
+
+
+class VideoGraphMetadata(BaseModel):
+    video_id: str = Field(min_length=1)
+    title: str = Field(min_length=1)
+    file_name: str = ""
+    source_type: Literal["upload", "url"]
+    domain_hint: str = "Auto"
+    duration_sec: float = Field(gt=0)
+    external_ids: dict[str, str] = Field(default_factory=dict)
+    pipeline_version: str = Field(min_length=1)
+
+
+class GraphWriteResult(BaseModel):
+    video_id: str = Field(min_length=1)
+    node_count: int = Field(ge=0)
+    relationship_count: int = Field(ge=0)
+
+
+class ServiceHealth(BaseModel):
+    service: Literal["twelvelabs", "openai", "strands", "neo4j"]
+    available: bool
+    detail: str
