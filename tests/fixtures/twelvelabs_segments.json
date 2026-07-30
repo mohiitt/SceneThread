@@ -1,0 +1,36 @@
+{
+  "video_id": "fixture_video_001",
+  "duration_sec": 38.0,
+  "segments": [
+    {
+      "segment_id": "seg_001",
+      "start_sec": 0.0,
+      "end_sec": 12.5,
+      "summary": "A presenter stands beside a whiteboard and introduces the weekly launch plan.",
+      "location": "conference room",
+      "participants": ["presenter"],
+      "objects": ["whiteboard", "marker"],
+      "actions": ["introduces launch plan"],
+      "speech_summary": "The presenter says the team needs to confirm owners for the launch checklist.",
+      "on_screen_text": ["Launch checklist"],
+      "topics": ["launch planning", "ownership"],
+      "tags": ["meeting", "planning", "whiteboard"],
+      "sentiment": "neutral"
+    },
+    {
+      "segment_id": "seg_002",
+      "start_sec": 12.5,
+      "end_sec": 38.0,
+      "summary": "A teammate points to the checklist while another person takes notes on a laptop.",
+      "location": "conference room",
+      "participants": ["teammate", "note taker"],
+      "objects": ["checklist", "laptop"],
+      "actions": ["assigns follow-up task", "takes notes"],
+      "speech_summary": "The teammate assigns the metrics dashboard follow-up to Jordan.",
+      "on_screen_text": ["Metrics dashboard"],
+      "topics": ["metrics", "follow-up tasks"],
+      "tags": ["meeting", "assignment", "dashboard"],
+      "sentiment": "neutral"
+    }
+  ]
+}

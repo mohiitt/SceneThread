@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "scenethread"
+version = "0.1.0"
+description = "Video intelligence agent that builds a searchable Neo4j context graph."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "streamlit",
+  "pydantic>=2",
+  "pydantic-settings",
+  "python-dotenv",
+  "twelvelabs",
+  "neo4j",
+  "strands-agents[openai]",
+  "strands-agents-tools",
+  "openai>=2",
+  "pyvis",
+  "networkx",
+  "tenacity",
+  "orjson",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest",
+  "pytest-mock",
+  "ruff",
+  "mypy",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"

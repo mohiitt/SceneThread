@@ -1,0 +1,12 @@
+{
+  "query": "Who was assigned to the metrics dashboard?",
+  "results": [
+    {
+      "scene_id": "scene_002",
+      "start_sec": 12.5,
+      "end_sec": 38.0,
+      "score": 0.91,
+      "summary": "A teammate assigns Jordan the metrics dashboard follow-up."
+    }
+  ]
+}

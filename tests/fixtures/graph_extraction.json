@@ -1,0 +1,93 @@
+{
+  "video_summary": "A short planning meeting covers launch checklist ownership and a metrics dashboard follow-up.",
+  "entities": [
+    {
+      "local_id": "entity_presenter",
+      "canonical_name": "presenter",
+      "entity_type": "PERSON",
+      "aliases": ["speaker 1"],
+      "description": "Person introducing the launch plan near the whiteboard.",
+      "confidence": 0.74
+    },
+    {
+      "local_id": "entity_jordan",
+      "canonical_name": "Jordan",
+      "entity_type": "PERSON",
+      "aliases": ["note taker"],
+      "description": "Person assigned to follow up on the metrics dashboard.",
+      "confidence": 0.82
+    },
+    {
+      "local_id": "entity_dashboard",
+      "canonical_name": "metrics dashboard",
+      "entity_type": "CONCEPT",
+      "aliases": ["dashboard"],
+      "description": "Dashboard discussed as a follow-up item.",
+      "confidence": 0.9
+    }
+  ],
+  "scenes": [
+    {
+      "local_id": "scene_001",
+      "ordinal": 1,
+      "start_sec": 0.0,
+      "end_sec": 12.5,
+      "summary": "The presenter introduces the weekly launch checklist.",
+      "location": "conference room",
+      "speech_summary": "The team needs owners for the launch checklist.",
+      "on_screen_text": ["Launch checklist"],
+      "sentiment": "neutral",
+      "entity_ids": ["entity_presenter"],
+      "tags": ["meeting", "planning"],
+      "confidence": 0.86
+    },
+    {
+      "local_id": "scene_002",
+      "ordinal": 2,
+      "start_sec": 12.5,
+      "end_sec": 38.0,
+      "summary": "A teammate assigns Jordan the metrics dashboard follow-up.",
+      "location": "conference room",
+      "speech_summary": "Jordan is assigned to follow up on the metrics dashboard.",
+      "on_screen_text": ["Metrics dashboard"],
+      "sentiment": "neutral",
+      "entity_ids": ["entity_jordan", "entity_dashboard"],
+      "tags": ["assignment", "dashboard"],
+      "confidence": 0.88
+    }
+  ],
+  "events": [
+    {
+      "local_id": "event_intro",
+      "scene_id": "scene_001",
+      "event_type": "EXPLAINS",
+      "description": "The presenter explains that the launch checklist needs owners.",
+      "start_sec": 1.0,
+      "end_sec": 11.5,
+      "participants": [{"entity_id": "entity_presenter", "role": "speaker"}],
+      "involved_entities": [],
+      "confidence": 0.8
+    },
+    {
+      "local_id": "event_assignment",
+      "scene_id": "scene_002",
+      "event_type": "ASSIGNS",
+      "description": "Jordan receives the metrics dashboard follow-up.",
+      "start_sec": 16.0,
+      "end_sec": 34.0,
+      "participants": [{"entity_id": "entity_jordan", "role": "owner"}],
+      "involved_entities": [{"entity_id": "entity_dashboard", "role": "task"}],
+      "confidence": 0.84
+    }
+  ],
+  "relationships": [
+    {
+      "source_entity_id": "entity_jordan",
+      "target_entity_id": "entity_dashboard",
+      "kind": "ASSIGNED_TO",
+      "description": "Jordan is responsible for the metrics dashboard follow-up.",
+      "scene_id": "scene_002",
+      "confidence": 0.84
+    }
+  ]
+}
