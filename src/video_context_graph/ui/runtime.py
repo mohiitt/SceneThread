@@ -33,6 +33,7 @@ from video_context_graph.integrations.twelvelabs_client import TwelveLabsClient
 
 @dataclass
 class FixtureRuntime:
+    app_data_dir: str
     bundle: FixtureBundle
     video_service: VideoIntelligenceService
     graph_service: GraphService
@@ -55,6 +56,7 @@ def create_fixture_runtime(settings: Settings) -> FixtureRuntime:
         pipeline_version=settings.pipeline_version,
     )
     return FixtureRuntime(
+        app_data_dir=settings.app_data_dir,
         bundle=bundle,
         video_service=video_service,
         graph_service=graph_service,
@@ -90,6 +92,7 @@ def create_live_openai_runtime(settings: Settings) -> FixtureRuntime:
         pipeline_version=settings.pipeline_version,
     )
     return FixtureRuntime(
+        app_data_dir=settings.app_data_dir,
         bundle=bundle,
         video_service=video_service,
         graph_service=graph_service,
@@ -120,6 +123,7 @@ def create_live_runtime(settings: Settings) -> FixtureRuntime:
         pipeline_version=settings.pipeline_version,
     )
     return FixtureRuntime(
+        app_data_dir=settings.app_data_dir,
         bundle=bundle,
         video_service=video_service,
         graph_service=graph_service,

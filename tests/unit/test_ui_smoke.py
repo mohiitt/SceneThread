@@ -38,6 +38,23 @@ def test_streamlit_exposes_explicit_live_openai_mode() -> None:
     assert "Full live services" in options
 
 
+def test_ask_evidence_opens_timestamped_scene_popup() -> None:
+    app_path = Path(__file__).resolve().parents[2] / "app.py"
+    app = AppTest.from_file(str(app_path), default_timeout=15).run()
+    app.session_state["video_sources"] = {
+        "fixture_video_001": "https://example.com/video.mp4"
+    }
+
+    ask_button = next(button for button in app.button if button.label == "Ask fixture")
+    ask_button.click().run()
+    scene_button = next(button for button in app.button if button.label == "View scene")
+    scene_button.click().run()
+
+    assert not app.exception
+    assert len(app.get("video")) == 1
+    assert any("scene_002 · 00:12–00:38" in item.value for item in app.markdown)
+
+
 def test_switching_runtime_mode_clears_results_from_previous_mode() -> None:
     app_path = Path(__file__).resolve().parents[2] / "app.py"
     app = AppTest.from_file(str(app_path), default_timeout=15).run()

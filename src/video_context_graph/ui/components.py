@@ -6,6 +6,7 @@ import streamlit as st
 
 from video_context_graph.contracts import (
     AnswerResult,
+    EvidenceReference,
     GraphExtraction,
     PipelineTrace,
     ServiceHealth,
@@ -68,12 +69,12 @@ def render_trace(trace: PipelineTrace) -> None:
                 st.json(event.details)
 
 
-def render_answer(answer: AnswerResult) -> None:
+def render_answer(answer: AnswerResult, *, video_source: str | bytes | None = None) -> None:
     st.markdown(answer.answer)
     st.progress(answer.confidence, text=f"Answer confidence: {answer.confidence:.0%}")
     if answer.evidence:
         st.subheader("Timestamp evidence")
-        for evidence in answer.evidence:
+        for evidence_index, evidence in enumerate(answer.evidence):
             with st.container(border=True):
                 st.markdown(
                     f"**{evidence.scene_id} · "
@@ -81,7 +82,34 @@ def render_answer(answer: AnswerResult) -> None:
                     f"{format_timestamp(evidence.end_sec)}**"
                 )
                 st.caption(evidence.reason)
+                if video_source is not None and st.button(
+                    "View scene",
+                    key=(
+                        f"view_scene_{evidence_index}_{evidence.scene_id}_"
+                        f"{evidence.start_sec}_{evidence.end_sec}"
+                    ),
+                ):
+                    _show_scene_dialog(video_source, evidence)
     if answer.limitations:
         with st.expander("Limitations", expanded=True):
             for limitation in answer.limitations:
                 st.write(f"- {limitation}")
+
+
+@st.dialog("Scene evidence", width="large")
+def _show_scene_dialog(
+    video_source: str | bytes,
+    evidence: EvidenceReference,
+) -> None:
+    st.markdown(
+        f"**{evidence.scene_id} · "
+        f"{format_timestamp(evidence.start_sec)}–"
+        f"{format_timestamp(evidence.end_sec)}**"
+    )
+    st.video(
+        video_source,
+        start_time=evidence.start_sec,
+        end_time=evidence.end_sec,
+        autoplay=True,
+    )
+    st.caption(evidence.reason)

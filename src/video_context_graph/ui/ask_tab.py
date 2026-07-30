@@ -46,7 +46,9 @@ def render_ask_tab(runtime: FixtureRuntime, mode: str) -> None:
 
     stored_answer = cast(AnswerResult | None, st.session_state.get("latest_answer"))
     if stored_answer is not None:
-        render_answer(stored_answer)
+        answer_video_id = selected_video_id or runtime.bundle.segments.video_id
+        video_source = st.session_state.get("video_sources", {}).get(answer_video_id)
+        render_answer(stored_answer, video_source=video_source)
 
     history = st.session_state.get("qa_history", [])
     if history:

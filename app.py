@@ -50,6 +50,7 @@ with st.sidebar:
             "selected_video_id",
             "latest_answer",
             "qa_history",
+            "video_sources",
         ):
             st.session_state.pop(state_key, None)
     runtime = st.session_state["_runtime"]
