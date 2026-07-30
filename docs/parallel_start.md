@@ -1,5 +1,9 @@
 # Parallel Implementation Start
 
+> Historical handoff record: the three parallel implementations have been merged into
+> `main` and full-live integration was verified on 2026-07-30. Use this file to understand
+> ownership and the original prompts, not as the current implementation checklist.
+
 Start parallel work only after the preparation changes are reviewed and committed. All
 three teammates must begin from that same commit.
 

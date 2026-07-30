@@ -99,6 +99,20 @@ does not claim that live sponsor calls, Neo4j persistence, or QA have succeeded.
 Fixture and live paths must produce the same Pydantic return types and the same
 `PipelineTrace` stage names.
 
+## Current implementation status
+
+All three service groups are implemented and integrated:
+
+- `TwelveLabsClient` implements live ingestion, polling, segmentation, indexing, caching,
+  resume state, semantic search, and health checks.
+- `Neo4jGraphService` implements transactional idempotent writes, safe reads, health
+  checks, schema initialization, and bounded visualization data.
+- Fixture and live Strands/OpenAI extraction and QA services are wired through
+  `SceneThreadCoordinator` and the Streamlit runtime factories.
+
+The contracts remain single-video: `SearchRequest`, graph reads, and QA require one
+`video_id`. Collection-level search requires an approved contract extension.
+
 ## Parallel editing rule
 
 - Developer A edits pipeline and TwelveLabs-owned paths.

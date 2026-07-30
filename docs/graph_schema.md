@@ -1,7 +1,31 @@
 # Graph Schema
 
-The MVP graph model uses domain-neutral `Video`, `Scene`, `Entity`, `Event`, and `Tag` nodes with a small fixed relationship vocabulary.
+The implemented graph is domain-neutral and uses five node labels:
 
-The Strands Extraction Agent hands a validated `GraphExtraction` to the `index_graph`
-tool. That tool maps the contract to deterministic, parameterized Neo4j writes; the model
-does not generate write Cypher or receive database credentials.
+- `Video` — source metadata, summary, duration, pipeline status, and sponsor IDs.
+- `Scene` — ordinal, exact source timestamps, summary, speech, text, and confidence.
+- `Entity` — video-scoped canonical name, aliases, type, description, and confidence.
+- `Event` — video-scoped type, description, timestamps, and confidence.
+- `Tag` — normalized reusable scene label.
+
+Relationships are fixed:
+
+```text
+(Video)-[:HAS_SCENE]->(Scene)
+(Scene)-[:NEXT_SCENE]->(Scene)
+(Scene)-[:HAS_EVENT]->(Event)
+(Entity)-[:APPEARS_IN]->(Scene)
+(Entity)-[:PARTICIPATES_IN {role}]->(Event)
+(Entity)-[:INVOLVED_IN {role}]->(Event)
+(Scene)-[:HAS_TAG]->(Tag)
+(Entity)-[:RELATED_TO {kind, description, scene_id, confidence}]->(Entity)
+```
+
+The Strands Extraction Agent returns a validated `GraphExtraction`. Deterministic mapping
+creates video-scoped SHA-256-derived identifiers, and `GraphWriter` performs one
+transaction using fixed parameterized `MERGE` queries. The model does not generate write
+Cypher or receive database credentials.
+
+`scripts/init_graph.py` idempotently installs eight uniqueness constraints/index
+statements. Safe read queries and the bounded visualization payload builder live under
+`src/video_context_graph/graph/`.

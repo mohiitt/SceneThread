@@ -8,9 +8,9 @@ SceneThread is a Python 3.11 Streamlit application that ingests video, extracts 
 
 - Streamlit provides the demo UI.
 - TwelveLabs handles video upload, segmentation, indexing, and semantic moment search.
-- Strands visibly orchestrates sponsor handoffs through named tools and agents.
-- TwelveLabs ingestion and Neo4j indexing remain deterministic operations behind safe
-  Strands tool boundaries.
+- A code-defined coordinator visibly sequences sponsor handoffs and emits a safe trace.
+- TwelveLabs ingestion and Neo4j indexing remain deterministic operations behind frozen
+  service interfaces; Strands-compatible tool wrappers expose those boundaries.
 - Strands Agents with OpenAI handle graph normalization and question answering.
 - Pydantic models in `src/video_context_graph/contracts/` define shared interfaces.
 - Neo4j writes and reads use deterministic, parameterized code.
@@ -43,7 +43,9 @@ SceneThread is a Python 3.11 Streamlit application that ingests video, extracts 
 - Run app: `streamlit run app.py`
 - Test: `pytest -q`
 - Lint: `ruff check .`
-- Health check: `python scripts/health_check.py`
+- Environment check: `python -m dotenv run -- python scripts/health_check.py`
+- Neo4j schema and connectivity: `python scripts/init_graph.py`
+- Fixture replay: `python scripts/replay_pipeline.py`
 
 ## Development Rules
 
@@ -58,3 +60,5 @@ SceneThread is a Python 3.11 Streamlit application that ingests video, extracts 
 - Avoid fake success fallbacks; fixture mode must be explicit.
 - Preserve a safe, user-visible execution trace showing the Strands stage and sponsor
   handoff without exposing chain-of-thought.
+- Treat collection-level and cross-video surveillance search as a stretch goal. The
+  current QA interface is scoped to one selected `video_id`.

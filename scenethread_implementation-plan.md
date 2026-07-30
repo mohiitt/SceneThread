@@ -1,5 +1,9 @@
 # Video Agent Context Graph - Complete Implementation Plan
 
+This document preserves the original target design and delivery sequence. Section 1.1
+and the task board in Section 24 record the current implementation; unchecked items and
+later phases remain roadmap work.
+
 ## 1. Project Summary
 
 ### Working title
@@ -28,6 +32,23 @@ Build a video agent that ingests raw video, understands what is shown, said, hea
 
 ---
 
+## 1.1 Current implementation status — 2026-07-30
+
+- The fixture, live-OpenAI hybrid, and full-live Streamlit modes are implemented.
+- `TwelveLabsClient`, `Neo4jGraphService`, Strands/OpenAI extraction and QA, and the
+  code-defined pipeline coordinator are integrated.
+- A full-live browser run processed the 52-second W3C Sintel trailer: 6 scenes,
+  6 entities, 7 events, 38 Neo4j nodes, 68 relationships, eight saved semantic-search
+  results, and a grounded chronological answer with six timestamp citations.
+- The pipeline trace visibly records the coordinator and sponsor handoffs. The current UI
+  does not show the QA agent's internal tool-call trace.
+- Live direct-URL ingestion is verified. Streamlit browser-upload persistence is not yet
+  connected.
+- QA remains scoped to one selected video. Multi-day surveillance search remains a
+  stretch goal described in `docs/surveillance_demo.md`.
+
+---
+
 ## 2. Architecture Decision
 
 ### Selected architecture
@@ -41,7 +62,8 @@ The application will use:
 - Strands Agents Python SDK with the OpenAI Responses provider.
 - Pydantic models for strict data contracts.
 - Neo4j official Python driver for parameterized Cypher queries.
-- PyVis for a lightweight graph visualization inside Streamlit.
+- PyVis and NetworkX for graph-visualization payload support; the current Streamlit graph
+  explorer renders validated tables, while interactive PyVis embedding remains pending.
 - Pytest for unit and integration tests.
 - Local JSON artifacts for caching and debugging.
 
@@ -1518,13 +1540,15 @@ This must work before any live API integration.
 
 ## 17.3 Live smoke tests
 
-Create one command per sponsor integration:
+Use the implemented health panel and credential-gated checks:
 
 ```bash
-python scripts/health_check.py --service twelvelabs
-python scripts/health_check.py --service neo4j
-python scripts/health_check.py --service openai
-python scripts/health_check.py --service strands
+python -m dotenv run -- python scripts/health_check.py
+python scripts/init_graph.py
+RUN_NEO4J_LIVE=1 pytest -q tests/integration/test_neo4j_live.py
+TWELVELABS_LIVE_TEST_URL=<direct-media-url> \
+TWELVELABS_LIVE_TEST_QUERY=<query> \
+pytest -q tests/integration/test_twelvelabs_live.py
 ```
 
 Live smoke video:
@@ -1885,46 +1909,46 @@ Only attempt these after the MVP is stable.
 
 ### Developer A
 
-- [ ] Implement `TwelveLabsClient`.
-- [ ] Implement asset upload and readiness polling.
-- [ ] Implement segmentation task and parsing.
-- [ ] Implement Marengo indexing.
-- [ ] Implement artifact cache.
-- [ ] Implement pipeline state store.
-- [ ] Add TwelveLabs and pipeline tests.
+- [x] Implement `TwelveLabsClient`.
+- [x] Implement asset upload and readiness polling.
+- [x] Implement segmentation task and parsing.
+- [x] Implement Marengo indexing.
+- [x] Implement artifact cache.
+- [x] Implement pipeline state store.
+- [x] Add TwelveLabs and pipeline tests.
 
 ### Developer B
 
-- [ ] Implement `Neo4jClient` and health check.
-- [ ] Add schema initialization script.
-- [ ] Implement graph mapper.
-- [ ] Implement idempotent graph writer.
-- [ ] Implement all safe read query methods.
-- [ ] Implement graph statistics.
-- [ ] Implement graph visualization data builder.
-- [ ] Add graph tests.
+- [x] Implement `Neo4jClient` and health check.
+- [x] Add schema initialization script.
+- [x] Implement graph mapper.
+- [x] Implement idempotent graph writer.
+- [x] Implement all safe read query methods.
+- [x] Implement graph statistics.
+- [x] Implement graph visualization data builder.
+- [x] Add graph tests.
 
 ### Developer C
 
-- [ ] Configure Strands OpenAI Responses provider.
-- [ ] Implement the code-defined Strands Pipeline Coordinator.
-- [ ] Expose deterministic ingestion as an `ingest_video` Strands tool.
-- [ ] Expose validated deterministic graph writing as an `index_graph` Strands tool.
-- [ ] Implement Extraction Agent.
-- [ ] Implement QA Agent.
-- [ ] Implement custom QA tools.
-- [ ] Implement Streamlit tab skeleton.
-- [ ] Implement health panel.
-- [ ] Integrate pipeline callbacks into UI.
-- [ ] Add answer evidence rendering.
-- [ ] Add sponsor handoff and safe execution-trace rendering.
-- [ ] Run full end-to-end integration.
+- [x] Configure and live-validate the Strands OpenAI Responses provider.
+- [x] Implement the code-defined Strands Pipeline Coordinator.
+- [x] Expose deterministic ingestion as an `ingest_video` Strands tool.
+- [x] Expose validated deterministic graph writing as an `index_graph` Strands tool.
+- [x] Implement Extraction Agent with fixture and live boundaries.
+- [x] Implement QA Agent with fixture and live boundaries.
+- [x] Implement custom QA tools.
+- [x] Implement Streamlit tab skeleton.
+- [x] Implement health panels for fixture, hybrid, and full-live services.
+- [x] Integrate pipeline trace callbacks into UI.
+- [x] Add answer evidence rendering.
+- [x] Add sponsor handoff and safe execution-trace rendering.
+- [x] Run full end-to-end integration through the live Streamlit UI.
 
 ### Finalization
 
 - [ ] Test staged office video.
 - [ ] Test tutorial or cooking video.
-- [ ] Test meeting, sports, lecture, or public-domain movie scene.
+- [x] Test a public movie trailer through the full-live path.
 - [ ] Score videos in Test Lab.
 - [ ] Select final video.
 - [ ] Freeze features.
@@ -1983,10 +2007,10 @@ Build the simplest architecture that proves the full sponsor story:
 
 ```text
 Video
-  -> Strands Pipeline Coordinator
-  -> ingest_video tool using deterministic TwelveLabs operations
+  -> code-defined Pipeline Coordinator
+  -> deterministic TwelveLabs operations at the ingest_video service/tool boundary
   -> Strands Extraction Agent using OpenAI structured reasoning
-  -> index_graph tool using deterministic Neo4j writes
+  -> deterministic Neo4j writes at the index_graph service/tool boundary
   -> Neo4j context graph
   -> Strands QA Agent using TwelveLabs and safe Neo4j tools
   -> grounded natural-language answer with timestamps
