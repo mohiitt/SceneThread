@@ -48,6 +48,7 @@ with st.sidebar:
             "pipeline_result",
             "pipeline_trace",
             "selected_video_id",
+            "selected_store_id",
             "latest_answer",
             "qa_history",
             "video_sources",

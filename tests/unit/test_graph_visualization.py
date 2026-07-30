@@ -15,6 +15,23 @@ class FakeClient:
         return self.responses.pop(0)
 
 
+def test_builder_lists_recent_uploaded_video_graphs_with_bounded_limit() -> None:
+    rows = [{"video_id": "video-1", "title": "Day one"}]
+    client = FakeClient([rows])
+
+    result = GraphVisualizationBuilder(client).list_videos(500)  # type: ignore[arg-type]
+
+    assert result == rows
+    query, parameters = client.calls[0]
+    assert "MATCH (video:Video)" in query
+    assert parameters == {"limit": 100}
+
+
+def test_builder_rejects_invalid_video_list_limit() -> None:
+    with pytest.raises(ValueError, match="positive integer"):
+        GraphVisualizationBuilder(FakeClient([])).list_videos(0)  # type: ignore[arg-type]
+
+
 def test_builder_caps_nodes_and_only_fetches_edges_between_selected_nodes() -> None:
     nodes = [
         {"id": "video-1", "type": "Video", "properties": {}},
@@ -31,6 +48,7 @@ def test_builder_caps_nodes_and_only_fetches_edges_between_selected_nodes() -> N
     assert client.calls[1][1]["node_ids"] == ["video-1", "scene-1"]
     assert client.calls[0][1]["fetch_limit"] == 3
     assert "WHEN node:Scene THEN node.scene_id" in client.calls[0][0]
+    assert "WHEN node:Video THEN 0" in client.calls[0][0]
 
 
 def test_builder_normalizes_focus_entity() -> None:

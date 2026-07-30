@@ -47,7 +47,7 @@ def create_fixture_runtime(settings: Settings) -> FixtureRuntime:
     video_service = FixtureVideoIntelligenceService(bundle)
     graph_service = FixtureGraphService(bundle)
     extraction_service = FixtureExtractionService(bundle)
-    qa_service = FixtureQuestionAnsweringService(bundle)
+    qa_service = FixtureQuestionAnsweringService(bundle, graph_service)
     coordinator = SceneThreadCoordinator(
         video_service=video_service,
         extraction_service=extraction_service,

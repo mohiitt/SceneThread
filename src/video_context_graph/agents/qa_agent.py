@@ -2,13 +2,21 @@
 
 from __future__ import annotations
 
-from video_context_graph.agents.prompts import QA_SYSTEM_PROMPT, build_qa_prompt
+from datetime import datetime, timedelta
+
+from video_context_graph.agents.prompts import (
+    COLLECTION_QA_SYSTEM_PROMPT,
+    QA_SYSTEM_PROMPT,
+    build_collection_qa_prompt,
+    build_qa_prompt,
+)
 from video_context_graph.agents.tools import build_qa_tools
 from video_context_graph.contracts import (
     AnswerResult,
     EvidenceReference,
     GraphService,
     QuestionAnsweringService,
+    RecordingScope,
     ServiceHealth,
     VideoIntelligenceService,
 )
@@ -23,8 +31,9 @@ class QuestionAnsweringAgentError(RuntimeError):
 class FixtureQuestionAnsweringService:
     """Explicit deterministic QA over the shared fixture evidence."""
 
-    def __init__(self, bundle: FixtureBundle) -> None:
+    def __init__(self, bundle: FixtureBundle, graph_service: GraphService) -> None:
         self._bundle = bundle
+        self._graph_service = graph_service
 
     def answer_question(self, *, video_id: str, question: str) -> AnswerResult:
         if video_id != self._bundle.segments.video_id:
@@ -89,6 +98,48 @@ class FixtureQuestionAnsweringService:
             ],
         )
 
+    def answer_collection_question(
+        self, *, scope: RecordingScope, question: str
+    ) -> AnswerResult:
+        recordings = self._graph_service.list_recordings(scope)
+        if not recordings:
+            return AnswerResult(
+                answer="No fixture recording matches the requested collection scope.",
+                evidence=[],
+                confidence=0.1,
+                limitations=["The bounded fixture scope contained no recordings."],
+            )
+        recording = recordings[0]
+        video_id = str(recording["video_id"])
+        answer = self.answer_question(video_id=video_id, question=question)
+        recorded_value = recording.get("recorded_at")
+        absolute_start = (
+            datetime.fromisoformat(str(recorded_value))
+            if recorded_value
+            else None
+        )
+        enriched = []
+        for evidence in answer.evidence:
+            enriched.append(
+                evidence.model_copy(
+                    update={
+                        "video_id": video_id,
+                        "camera_id": recording.get("camera_id"),
+                        "recorded_start_at": (
+                            absolute_start + timedelta(seconds=evidence.start_sec)
+                            if absolute_start is not None
+                            else None
+                        ),
+                        "recorded_end_at": (
+                            absolute_start + timedelta(seconds=evidence.end_sec)
+                            if absolute_start is not None
+                            else None
+                        ),
+                    }
+                )
+            )
+        return answer.model_copy(update={"evidence": enriched})
+
     def health_check(self) -> ServiceHealth:
         return ServiceHealth(
             service="strands",
@@ -108,6 +159,7 @@ class StrandsQuestionAnsweringService(QuestionAnsweringService):
         graph_service: GraphService,
     ) -> None:
         self._provider = provider
+        self._graph_service = graph_service
         self._tools = build_qa_tools(video_service, graph_service)
 
     def answer_question(self, *, video_id: str, question: str) -> AnswerResult:
@@ -126,6 +178,60 @@ class StrandsQuestionAnsweringService(QuestionAnsweringService):
         if not isinstance(result.structured_output, AnswerResult):
             raise QuestionAnsweringAgentError("Strands returned no AnswerResult")
         return result.structured_output
+
+    def answer_collection_question(
+        self, *, scope: RecordingScope, question: str
+    ) -> AnswerResult:
+        if not question.strip():
+            raise ValueError("question must not be empty")
+        recordings = self._graph_service.list_recordings(scope)
+        if not recordings:
+            return AnswerResult(
+                answer="No indexed recordings match the requested collection scope.",
+                evidence=[],
+                confidence=0.0,
+                limitations=[
+                    "Check the store, camera, and recorded-time filters or ingest matching footage."
+                ],
+            )
+        agent = self._provider.build_agent(
+            name="SceneThread Collection QA Agent",
+            description=(
+                "Answers questions across a bounded surveillance recording collection "
+                "using grounded read-only tools."
+            ),
+            system_prompt=COLLECTION_QA_SYSTEM_PROMPT,
+            tools=self._tools,
+        )
+        result = agent(
+            build_collection_qa_prompt(
+                scope_json=scope.model_dump_json(exclude_none=True),
+                question=question,
+            ),
+            structured_output_model=AnswerResult,
+        )
+        answer = result.structured_output
+        if not isinstance(answer, AnswerResult):
+            raise QuestionAnsweringAgentError("Strands returned no AnswerResult")
+        missing_video_ids = [
+            evidence.scene_id for evidence in answer.evidence if not evidence.video_id
+        ]
+        if missing_video_ids:
+            raise QuestionAnsweringAgentError(
+                "collection answer evidence omitted video_id for scenes: "
+                + ", ".join(missing_video_ids)
+            )
+        allowed_video_ids = {str(row["video_id"]) for row in recordings}
+        outside_scope = [
+            evidence.video_id
+            for evidence in answer.evidence
+            if evidence.video_id not in allowed_video_ids
+        ]
+        if outside_scope:
+            raise QuestionAnsweringAgentError(
+                "collection answer cited video IDs outside the authorized scope"
+            )
+        return answer
 
     def health_check(self) -> ServiceHealth:
         return self._provider.health_check()

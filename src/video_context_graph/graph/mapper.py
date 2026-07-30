@@ -98,6 +98,12 @@ def map_graph(metadata: VideoGraphMetadata, extraction: GraphExtraction) -> Grap
         "source_type": metadata.source_type,
         "domain_hint": metadata.domain_hint,
         "duration_sec": metadata.duration_sec,
+        "store_id": metadata.store_id or "",
+        "camera_id": metadata.camera_id or "",
+        "recorded_at": (
+            metadata.recorded_at.isoformat() if metadata.recorded_at is not None else ""
+        ),
+        "search_available": metadata.search_available,
         "status": "READY",
         "summary": extraction.video_summary,
         "twelvelabs_asset_id": external_ids.get("twelvelabs_asset_id", external_ids.get("asset_id", "")),

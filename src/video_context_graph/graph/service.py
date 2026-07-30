@@ -5,6 +5,7 @@ from __future__ import annotations
 from video_context_graph.contracts.extraction import GraphExtraction
 from video_context_graph.contracts.video import (
     GraphWriteResult,
+    RecordingScope,
     SearchResults,
     ServiceHealth,
     VideoGraphMetadata,
@@ -34,6 +35,9 @@ class Neo4jGraphService:
         self, metadata: VideoGraphMetadata, extraction: GraphExtraction
     ) -> GraphWriteResult:
         return self.writer.index_graph(metadata, extraction)
+
+    def list_recordings(self, scope: RecordingScope) -> list[dict]:
+        return self.queries.list_recordings(scope)
 
     def get_video_overview(self, video_id: str) -> dict:
         return self.queries.get_video_overview(video_id)

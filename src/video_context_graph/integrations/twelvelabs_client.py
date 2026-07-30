@@ -344,6 +344,21 @@ class TwelveLabsClient:
                         "scenethread_video_id": request.video_id,
                         "title": request.title,
                         "domain_hint": request.domain_hint,
+                        **(
+                            {"store_id": request.store_id}
+                            if request.store_id is not None
+                            else {}
+                        ),
+                        **(
+                            {"camera_id": request.camera_id}
+                            if request.camera_id is not None
+                            else {}
+                        ),
+                        **(
+                            {"recorded_at": request.recorded_at.isoformat()}
+                            if request.recorded_at is not None
+                            else {}
+                        ),
                     },
                 ),
             )
@@ -397,6 +412,13 @@ class TwelveLabsClient:
                 "scenethread_video_id": request.video_id,
                 "title": request.title,
                 "domain_hint": request.domain_hint,
+                "store_id": request.store_id,
+                "camera_id": request.camera_id,
+                "recorded_at": (
+                    request.recorded_at.isoformat()
+                    if request.recorded_at is not None
+                    else None
+                ),
             }
         )
         if request.source_type == "url":

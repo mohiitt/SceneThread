@@ -1,7 +1,9 @@
+from datetime import UTC, datetime
 from typing import Any
 
 import pytest
 
+from video_context_graph.contracts import RecordingScope
 from video_context_graph.fixture_store import load_fixture_bundle
 from video_context_graph.graph.queries import GraphQueries
 
@@ -14,6 +16,26 @@ class FakeClient:
     def execute_read(self, query: str, parameters: dict[str, Any]) -> list[dict[str, Any]]:
         self.calls.append((query, parameters))
         return self.responses.pop(0) if self.responses else []
+
+
+def test_list_recordings_uses_parameterized_collection_scope() -> None:
+    client = FakeClient()
+    scope = RecordingScope(
+        store_id="store_sf",
+        camera_ids=["entrance"],
+        recorded_from=datetime(2026, 7, 30, 9, tzinfo=UTC),
+        recorded_to=datetime(2026, 7, 31, 9, tzinfo=UTC),
+        max_videos=8,
+    )
+
+    GraphQueries(client).list_recordings(scope)  # type: ignore[arg-type]
+
+    query, parameters = client.calls[0]
+    assert "$store_id" in query
+    assert "store_sf" not in query
+    assert parameters["store_id"] == "store_sf"
+    assert parameters["camera_ids"] == ["entrance"]
+    assert parameters["limit"] == 8
 
 
 def test_list_entities_normalizes_type_and_caps_limit() -> None:

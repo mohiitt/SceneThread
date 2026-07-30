@@ -19,6 +19,20 @@ class GraphVisualizationBuilder:
         self.client = client
         self.default_limit = min(default_limit, 500)
 
+    def list_videos(self, limit: int = 50) -> list[JsonRecord]:
+        if isinstance(limit, bool) or not isinstance(limit, int) or limit < 1:
+            raise ValueError("limit must be a positive integer")
+        return self.client.execute_read(
+            """MATCH (video:Video)
+            RETURN video.video_id AS video_id, video.title AS title,
+                   video.store_id AS store_id, video.camera_id AS camera_id,
+                   video.recorded_at AS recorded_at, video.duration_sec AS duration_sec,
+                   video.status AS status
+            ORDER BY video.updated_at DESC, video.recorded_at DESC, video.video_id ASC
+            LIMIT $limit""",
+            {"limit": min(limit, 100)},
+        )
+
     def build(
         self,
         video_id: str,
@@ -77,7 +91,13 @@ class GraphVisualizationBuilder:
                  WHEN node:Event THEN node.event_id
                  ELSE node.tag_id END AS id
             RETURN id, head(labels(node)) AS type, properties(node) AS properties
-            ORDER BY type ASC, coalesce(node.ordinal, node.start_sec, 0) ASC, id ASC
+            ORDER BY CASE
+                     WHEN node:Video THEN 0
+                     WHEN node:Scene THEN 1
+                     WHEN node:Entity THEN 2
+                     WHEN node:Event THEN 3
+                     ELSE 4 END ASC,
+                     coalesce(node.ordinal, node.start_sec, 0) ASC, id ASC
             LIMIT $fetch_limit""",
             {
                 "video_id": video_id,

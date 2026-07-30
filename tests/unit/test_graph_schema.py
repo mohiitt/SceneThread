@@ -24,10 +24,10 @@ class FakeClient:
 def test_schema_loader_returns_idempotent_constraints_and_indexes() -> None:
     statements = load_schema_statements()
 
-    assert len(statements) == 8
+    assert len(statements) == 10
     assert all("IF NOT EXISTS" in statement for statement in statements)
     assert sum(statement.startswith("CREATE CONSTRAINT") for statement in statements) == 5
-    assert sum(statement.startswith("CREATE INDEX") for statement in statements) == 3
+    assert sum(statement.startswith("CREATE INDEX") for statement in statements) == 5
 
 
 def test_schema_initializer_executes_every_statement() -> None:
@@ -35,8 +35,8 @@ def test_schema_initializer_executes_every_statement() -> None:
 
     count = initialize_schema(client)  # type: ignore[arg-type]
 
-    assert count == 8
-    assert len(client.writes) == 8
+    assert count == 10
+    assert len(client.writes) == 10
 
 
 def test_concrete_service_satisfies_frozen_graph_protocol() -> None:

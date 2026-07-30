@@ -8,7 +8,7 @@ from collections.abc import Mapping
 from time import perf_counter
 from typing import Any
 
-from video_context_graph.contracts.video import SearchResults
+from video_context_graph.contracts.video import RecordingScope, SearchResults
 from video_context_graph.graph.mapper import normalize_lookup
 from video_context_graph.integrations.neo4j_client import Neo4jClient
 
@@ -37,12 +37,52 @@ class GraphQueries:
             duration_ms = (perf_counter() - started) * 1000
             logger.info("Neo4j query %s completed in %.1f ms", query_name, duration_ms)
 
+    def list_recordings(self, scope: RecordingScope) -> list[JsonRecord]:
+        """Discover a bounded recording collection without constructing dynamic Cypher."""
+
+        return self._read(
+            "list_recordings",
+            """MATCH (v:Video)
+            WHERE v.store_id = $store_id
+              AND (size($camera_ids) = 0 OR v.camera_id IN $camera_ids)
+              AND (size($video_ids) = 0 OR v.video_id IN $video_ids)
+              AND ($recorded_from IS NULL OR
+                   (v.recorded_at <> '' AND datetime(v.recorded_at) >= datetime($recorded_from)))
+              AND ($recorded_to IS NULL OR
+                   (v.recorded_at <> '' AND datetime(v.recorded_at) < datetime($recorded_to)))
+            RETURN v.video_id AS video_id, v.title AS title, v.store_id AS store_id,
+                   v.camera_id AS camera_id, v.recorded_at AS recorded_at,
+                   v.duration_sec AS duration_sec, v.status AS status,
+                   coalesce(v.search_available, false) AS search_available
+            ORDER BY v.recorded_at ASC, v.camera_id ASC, v.video_id ASC
+            LIMIT $limit""",
+            {
+                "store_id": scope.store_id,
+                "camera_ids": scope.camera_ids,
+                "video_ids": scope.video_ids,
+                "recorded_from": (
+                    scope.recorded_from.isoformat()
+                    if scope.recorded_from is not None
+                    else None
+                ),
+                "recorded_to": (
+                    scope.recorded_to.isoformat()
+                    if scope.recorded_to is not None
+                    else None
+                ),
+                "limit": _limit(scope.max_videos),
+            },
+        )
+
     def get_video_overview(self, video_id: str) -> JsonRecord:
         video_rows = self._read(
             "get_video_overview.video",
             """MATCH (v:Video {video_id: $video_id})
             RETURN v.video_id AS video_id, v.title AS title, v.summary AS summary,
-                   v.duration_sec AS duration_sec, v.status AS status""",
+                   v.duration_sec AS duration_sec, v.status AS status,
+                   v.store_id AS store_id, v.camera_id AS camera_id,
+                   v.recorded_at AS recorded_at,
+                   coalesce(v.search_available, false) AS search_available""",
             {"video_id": video_id},
         )
         if not video_rows:

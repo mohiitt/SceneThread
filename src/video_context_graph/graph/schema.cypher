@@ -21,3 +21,9 @@ FOR (s:Scene) ON (s.video_id, s.start_sec);
 
 CREATE INDEX event_time_lookup IF NOT EXISTS
 FOR (e:Event) ON (e.video_id, e.start_sec);
+
+CREATE INDEX video_collection_lookup IF NOT EXISTS
+FOR (v:Video) ON (v.store_id, v.recorded_at);
+
+CREATE INDEX video_camera_lookup IF NOT EXISTS
+FOR (v:Video) ON (v.store_id, v.camera_id);

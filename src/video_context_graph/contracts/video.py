@@ -2,9 +2,15 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
+
+
+def _require_timezone(value: datetime | None, field_name: str) -> None:
+    if value is not None and (value.tzinfo is None or value.utcoffset() is None):
+        raise ValueError(f"{field_name} must include a timezone")
 
 
 class IngestionRequest(BaseModel):
@@ -14,6 +20,14 @@ class IngestionRequest(BaseModel):
     source_ref: str = Field(min_length=1)
     domain_hint: str = "Auto"
     force_reprocess: bool = False
+    store_id: str | None = Field(default=None, min_length=1)
+    camera_id: str | None = Field(default=None, min_length=1)
+    recorded_at: datetime | None = None
+
+    @model_validator(mode="after")
+    def validate_recording_identity(self) -> IngestionRequest:
+        _require_timezone(self.recorded_at, "recorded_at")
+        return self
 
 
 class VideoSegment(BaseModel):
@@ -115,6 +129,40 @@ class VideoGraphMetadata(BaseModel):
     duration_sec: float = Field(gt=0)
     external_ids: dict[str, str] = Field(default_factory=dict)
     pipeline_version: str = Field(min_length=1)
+    store_id: str | None = Field(default=None, min_length=1)
+    camera_id: str | None = Field(default=None, min_length=1)
+    recorded_at: datetime | None = None
+    search_available: bool = True
+
+    @model_validator(mode="after")
+    def validate_recording_identity(self) -> VideoGraphMetadata:
+        _require_timezone(self.recorded_at, "recorded_at")
+        return self
+
+
+class RecordingScope(BaseModel):
+    """Bounded collection selector for cross-video discovery and QA."""
+
+    store_id: str = Field(min_length=1)
+    camera_ids: list[str] = Field(default_factory=list, max_length=20)
+    recorded_from: datetime | None = None
+    recorded_to: datetime | None = None
+    video_ids: list[str] = Field(default_factory=list, max_length=100)
+    max_videos: int = Field(default=12, ge=1, le=50)
+
+    @model_validator(mode="after")
+    def validate_time_window(self) -> RecordingScope:
+        _require_timezone(self.recorded_from, "recorded_from")
+        _require_timezone(self.recorded_to, "recorded_to")
+        if (
+            self.recorded_from is not None
+            and self.recorded_to is not None
+            and self.recorded_from >= self.recorded_to
+        ):
+            raise ValueError("recorded_from must be earlier than recorded_to")
+        self.camera_ids = list(dict.fromkeys(self.camera_ids))
+        self.video_ids = list(dict.fromkeys(self.video_ids))
+        return self
 
 
 class GraphWriteResult(BaseModel):

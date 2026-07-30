@@ -29,6 +29,27 @@ def test_streamlit_fixture_pipeline_completes() -> None:
     assert any("Safe Strands execution trace" in header.value for header in app.subheader)
 
 
+def test_streamlit_fixture_collection_question_has_recording_provenance() -> None:
+    app_path = Path(__file__).resolve().parents[2] / "app.py"
+    app = AppTest.from_file(str(app_path), default_timeout=15).run()
+    app.sidebar.radio[0].set_value("Fixture preview").run()
+    next(button for button in app.button if button.label == "Run fixture pipeline").click().run()
+    next(radio for radio in app.radio if radio.label == "Question scope").set_value(
+        "Recording collection"
+    ).run()
+    next(field for field in app.text_input if field.label == "Question").set_value(
+        "Who was assigned to the metrics dashboard?"
+    )
+    next(button for button in app.button if button.label == "Ask fixture").click().run()
+
+    assert not app.exception
+    assert any("Jordan" in markdown.value for markdown in app.markdown)
+    assert any(
+        "fixture_video_001" in caption.value and "camera_01" in caption.value
+        for caption in app.caption
+    )
+
+
 def test_streamlit_exposes_explicit_live_openai_mode() -> None:
     app_path = Path(__file__).resolve().parents[2] / "app.py"
     app = AppTest.from_file(str(app_path), default_timeout=15).run()
@@ -41,9 +62,13 @@ def test_streamlit_exposes_explicit_live_openai_mode() -> None:
 def test_ask_evidence_opens_timestamped_scene_popup() -> None:
     app_path = Path(__file__).resolve().parents[2] / "app.py"
     app = AppTest.from_file(str(app_path), default_timeout=15).run()
+    app.sidebar.radio[0].set_value("Fixture preview").run()
     app.session_state["video_sources"] = {
         "fixture_video_001": "https://example.com/video.mp4"
     }
+    next(field for field in app.text_input if field.label == "Question").set_value(
+        "Who was assigned to the metrics dashboard?"
+    )
 
     ask_button = next(button for button in app.button if button.label == "Ask fixture")
     ask_button.click().run()

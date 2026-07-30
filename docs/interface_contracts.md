@@ -32,6 +32,7 @@ index_graph(
 ) -> GraphWriteResult
 
 get_video_overview(video_id: str) -> dict
+list_recordings(scope: RecordingScope) -> list[dict]
 list_video_entities(video_id: str, entity_type: str | None = None, limit: int = 50) -> list[dict]
 get_entity_timeline(video_id: str, entity_name: str, limit: int = 20) -> list[dict]
 get_scene_details(video_id: str, scene_ids: list[str]) -> list[dict]
@@ -68,6 +69,7 @@ extract_graph(
 ) -> GraphExtraction
 
 answer_question(*, video_id: str, question: str) -> AnswerResult
+answer_collection_question(*, scope: RecordingScope, question: str) -> AnswerResult
 process_video(request: IngestionRequest) -> PipelineRunResult
 ```
 
@@ -110,8 +112,11 @@ All three service groups are implemented and integrated:
 - Fixture and live Strands/OpenAI extraction and QA services are wired through
   `SceneThreadCoordinator` and the Streamlit runtime factories.
 
-The contracts remain single-video: `SearchRequest`, graph reads, and QA require one
-`video_id`. Collection-level search requires an approved contract extension.
+`SearchRequest` remains deliberately scoped to one TwelveLabs asset. Collection QA uses
+`RecordingScope(store_id, camera_ids, recorded_from, recorded_to, video_ids, max_videos)`
+to discover recordings, then invokes bounded per-video search. `IngestionRequest` and
+`VideoGraphMetadata` carry `store_id`, `camera_id`, and timezone-aware `recorded_at`.
+`EvidenceReference` can carry video/camera provenance plus absolute start/end times.
 
 ## Parallel editing rule
 

@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 import pytest
 from pydantic import ValidationError
 
-from video_context_graph.contracts import SegmentCollection
+from video_context_graph.contracts import IngestionRequest, RecordingScope, SegmentCollection
 
 
 def test_segment_collection_accepts_timestamps_within_video() -> None:
@@ -64,4 +66,33 @@ def test_segment_collection_rejects_segment_past_duration() -> None:
                     }
                 ],
             }
+        )
+
+
+def test_recording_metadata_requires_timezone_aware_start() -> None:
+    with pytest.raises(ValidationError, match="timezone"):
+        IngestionRequest(
+            video_id="video_1",
+            title="Camera footage",
+            source_type="url",
+            source_ref="https://example.com/video.mp4",
+            recorded_at=datetime.fromisoformat("2026-07-30T09:00:00"),
+        )
+
+
+def test_recording_scope_deduplicates_filters_and_validates_window() -> None:
+    scope = RecordingScope(
+        store_id="store_sf",
+        camera_ids=["entrance", "entrance"],
+        recorded_from=datetime(2026, 7, 30, 9, tzinfo=UTC),
+        recorded_to=datetime(2026, 7, 30, 10, tzinfo=UTC),
+    )
+
+    assert scope.camera_ids == ["entrance"]
+
+    with pytest.raises(ValidationError, match="earlier"):
+        RecordingScope(
+            store_id="store_sf",
+            recorded_from=datetime(2026, 7, 30, 10, tzinfo=UTC),
+            recorded_to=datetime(2026, 7, 30, 9, tzinfo=UTC),
         )

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 import streamlit as st
 
 from video_context_graph.contracts import (
@@ -76,11 +78,24 @@ def render_answer(answer: AnswerResult, *, video_source: str | bytes | None = No
         st.subheader("Timestamp evidence")
         for evidence_index, evidence in enumerate(answer.evidence):
             with st.container(border=True):
+                recording_label = " · ".join(
+                    value
+                    for value in (evidence.video_id, evidence.camera_id)
+                    if value
+                )
+                if recording_label:
+                    st.caption(recording_label)
                 st.markdown(
                     f"**{evidence.scene_id} · "
                     f"{format_timestamp(evidence.start_sec)}–"
                     f"{format_timestamp(evidence.end_sec)}**"
                 )
+                if evidence.recorded_start_at is not None:
+                    st.write(
+                        "Recorded time: "
+                        f"{_format_recorded_time(evidence.recorded_start_at)}–"
+                        f"{_format_recorded_time(evidence.recorded_end_at)}"
+                    )
                 st.caption(evidence.reason)
                 if video_source is not None and st.button(
                     "View scene",
@@ -113,3 +128,9 @@ def _show_scene_dialog(
         autoplay=True,
     )
     st.caption(evidence.reason)
+
+
+def _format_recorded_time(value: datetime | None) -> str:
+    if value is None:
+        return "unknown"
+    return value.isoformat(timespec="seconds")

@@ -15,9 +15,10 @@ Streamlit
 Question
   -> StrandsQuestionAnsweringService
        -> Strands Agent + OpenAI
-       -> bounded TwelveLabs semantic-search tool
-       -> seven bounded Neo4j read tools
-  -> validated AnswerResult with timestamp evidence
+       -> Neo4j collection discovery by store/camera/absolute time
+       -> bounded TwelveLabs semantic search across discovered recordings
+       -> safe graph reads and semantic-moment/scene alignment
+  -> validated AnswerResult with video, camera, relative, and absolute-time evidence
 ```
 
 The coordinator fixes ingestion → extraction → indexing in deterministic Python. It emits
@@ -48,7 +49,9 @@ runtime and generated graph state across normal tab reruns.
 
 ## Current boundary
 
-Ingestion and QA operate on one `video_id` at a time. Multi-day or multi-camera
-surveillance needs collection metadata, absolute recording time, search across several
-assets, and an explicitly confidence-bounded cross-video entity-resolution layer. Those
-remain stretch work; see `docs/surveillance_demo.md`.
+Ingestion still processes one asset at a time, but each `Video` records `store_id`,
+`camera_id`, timezone-aware `recorded_at`, and search availability. Collection QA first
+discovers at most 50 matching Neo4j recordings (12 by default), then searches each
+searchable TwelveLabs asset, aligns results to graph scenes, and reports partial
+failures. Anonymous entity identity remains scoped to one video; confidence-bounded
+cross-video person re-identification is intentionally not implemented.

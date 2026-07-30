@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import Protocol, cast
 
 from video_context_graph.agents.domain_profiles import get_domain_guidance, list_domain_profiles
@@ -11,6 +12,7 @@ from video_context_graph.contracts import (
     IngestionRequest,
     PipelineCoordinator,
     QuestionAnsweringService,
+    RecordingScope,
     VideoIntelligenceService,
 )
 from video_context_graph.ui.components import format_timestamp
@@ -57,6 +59,30 @@ def test_fixture_coordinator_runs_all_sponsor_handoffs() -> None:
         ("indexing", "Strands", "started"),
         ("indexing", "Neo4j", "completed"),
     ]
+
+
+def test_fixture_collection_qa_uses_indexed_recording_identity() -> None:
+    runtime = build_runtime()
+    runtime.coordinator.process_video(
+        IngestionRequest(
+            video_id=runtime.bundle.segments.video_id,
+            title="Planning fixture",
+            source_type="upload",
+            source_ref="fixture.mp4",
+            store_id="store_sf",
+            camera_id="meeting_room",
+            recorded_at=datetime(2026, 7, 30, 9, tzinfo=UTC),
+        )
+    )
+
+    answer = runtime.qa_service.answer_collection_question(
+        scope=RecordingScope(store_id="store_sf"),
+        question="Who was assigned to the dashboard?",
+    )
+
+    assert answer.evidence[0].video_id == runtime.bundle.segments.video_id
+    assert answer.evidence[0].camera_id == "meeting_room"
+    assert answer.evidence[0].recorded_start_at is not None
 
 
 def test_fixture_qa_returns_timestamped_evidence_and_abstains_when_needed() -> None:

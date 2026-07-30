@@ -2,10 +2,11 @@
 
 ## Feasibility
 
-SceneThread can already ingest and answer questions about one selected surveillance
-video. It can locate supported actions, objects, anonymous people, and timestamps. It
-must describe potential theft as suspicious or possible concealment unless the footage
-also shows the relevant checkout/exit context.
+SceneThread can ingest individual surveillance clips and answer across a bounded
+collection selected by store, cameras, and absolute recording time. It can locate
+supported actions, objects, anonymous people, and timestamps. It must describe potential
+theft as suspicious or possible concealment unless the footage also shows the relevant
+checkout/exit context.
 
 The system should answer “who” with evidence-based anonymous descriptions such as
 `person_2` or “the person wearing a gray hoodie.” Face recognition, biometric identity,
@@ -13,8 +14,8 @@ and legal determinations of guilt are outside scope.
 
 ## Recommended demo data
 
-The safest primary demo is three short, consented, staged MP4 recordings from one fixed
-camera:
+The safest primary demo is several short, consented, staged MP4 recordings from two or
+more fixed camera positions:
 
 - Day 1: normal browsing.
 - Day 2: selection followed by visible payment.
@@ -38,18 +39,26 @@ checkout, and exit visible. Public alternatives include:
 Download dataset clips locally and convert unsupported containers to MP4 when necessary.
 For live URL ingestion, host the MP4 at a direct public HTTP(S) media URL.
 
-## Work required for multi-day questions
+## How to prepare the staged footage
 
-The present contracts and QA runtime require one `video_id`. A true query such as “search
-all Store 01 recordings this week” needs:
+The collection extension now implements metadata, date-range discovery, bounded
+cross-video TwelveLabs search, wall-clock conversion, and multi-video evidence cards.
+Prepare every clip as follows:
 
-1. `store_id`, `camera_id`, and absolute `recorded_at` metadata.
-2. Chunking of day-long footage into bounded assets.
-3. Collection/date-range discovery before per-video search.
-4. Cross-video TwelveLabs search orchestration.
-5. Wall-clock conversion for relative scene timestamps.
-6. Confidence-bounded anonymous person tracking across clips.
-7. Multi-video evidence references in the answer contract and UI.
+1. Use one exact `store_id`, for example `aws-builder-loft-sf`.
+2. Give each physical viewpoint a stable `camera_id`, such as `entrance_cam`,
+   `shelf_cam`, or `checkout_cam`; do not rename a camera between clips.
+3. Enter the real timezone-aware start time shown by your shoot log.
+4. Give each asset a unique video ID, such as
+   `20260730_entrance_cam_take01`.
+5. Keep each clip below 15 minutes and preserve a few seconds before and after the key
+   action so temporal questions have context.
+6. Ingest every clip before opening **Ask → Recording collection**.
 
-Until that extension is implemented, ingest each clip separately and ask questions about
-the selected video. Do not present current single-video QA as collection-wide search.
+## Remaining boundary
+
+Anonymous labels such as `person_1` are intentionally local to one video. The agent may
+connect a sequence across cameras using explicit clothing, carried-object, direction,
+and timing evidence, but it must present that as a supported association with
+limitations—not biometric identity. Face recognition and perfect cross-video person
+re-identification remain outside scope.

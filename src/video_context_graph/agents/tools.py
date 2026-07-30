@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta
 from typing import Literal
 
 from strands import tool
@@ -10,11 +11,14 @@ from video_context_graph.contracts import (
     GraphExtraction,
     GraphService,
     IngestionRequest,
+    RecordingScope,
     SearchRequest,
     SearchResults,
     VideoGraphMetadata,
     VideoIntelligenceService,
 )
+
+MAX_COLLECTION_MATCHES = 30
 
 
 def build_qa_tools(
@@ -32,6 +36,141 @@ def build_qa_tools(
         return video_service.search_video_moments(
             SearchRequest(video_id=video_id, query=query, top_k=top_k)
         ).model_dump(mode="json")
+
+    @tool(
+        name="list_recordings",
+        description=(
+            "Discover recordings in one store, optionally filtered by cameras, an absolute "
+            "time window, or explicit video IDs. Use this before cross-video reasoning."
+        ),
+    )
+    def list_recordings(
+        store_id: str,
+        camera_ids: list[str] | None = None,
+        recorded_from: str = "",
+        recorded_to: str = "",
+        video_ids: list[str] | None = None,
+        max_videos: int = 12,
+    ) -> list[dict]:
+        scope = RecordingScope.model_validate(
+            {
+                "store_id": store_id,
+                "camera_ids": camera_ids or [],
+                "recorded_from": recorded_from or None,
+                "recorded_to": recorded_to or None,
+                "video_ids": video_ids or [],
+                "max_videos": max_videos,
+            }
+        )
+        return graph_service.list_recordings(scope)
+
+    @tool(
+        name="search_recordings",
+        description=(
+            "Search visual, spoken, audio, and on-screen-text evidence across a bounded "
+            "store recording collection. Returns video, camera, relative timestamps, "
+            "absolute timestamps when available, graph overlaps, and per-video failures."
+        ),
+    )
+    def search_recordings(
+        store_id: str,
+        query: str,
+        camera_ids: list[str] | None = None,
+        recorded_from: str = "",
+        recorded_to: str = "",
+        video_ids: list[str] | None = None,
+        max_videos: int = 12,
+        top_k_per_video: int = 3,
+    ) -> dict:
+        scope = RecordingScope.model_validate(
+            {
+                "store_id": store_id,
+                "camera_ids": camera_ids or [],
+                "recorded_from": recorded_from or None,
+                "recorded_to": recorded_to or None,
+                "video_ids": video_ids or [],
+                "max_videos": max_videos,
+            }
+        )
+        recordings = graph_service.list_recordings(scope)
+        matches: list[dict] = []
+        failures: list[dict] = []
+        searched_video_ids: list[str] = []
+        skipped_video_ids: list[str] = []
+        bounded_top_k = max(1, min(top_k_per_video, 5))
+        for recording in recordings:
+            video_id = str(recording["video_id"])
+            if not bool(recording.get("search_available")):
+                skipped_video_ids.append(video_id)
+                continue
+            try:
+                semantic = video_service.search_video_moments(
+                    SearchRequest(video_id=video_id, query=query, top_k=bounded_top_k)
+                )
+                overlaps = graph_service.find_scenes_overlapping_moments(
+                    video_id, semantic
+                )
+            except Exception as exc:  # noqa: BLE001 - preserve useful results from other videos.
+                failures.append(
+                    {"video_id": video_id, "error_type": type(exc).__name__}
+                )
+                continue
+            searched_video_ids.append(video_id)
+            overlap_by_moment: dict[int, list[dict]] = {}
+            for overlap in overlaps:
+                index = int(overlap.get("moment_index", 0))
+                overlap_by_moment.setdefault(index, []).append(overlap)
+            recorded_at = _parse_recorded_at(recording.get("recorded_at"))
+            for index, moment in enumerate(semantic.results):
+                absolute_start = (
+                    recorded_at + timedelta(seconds=moment.start_sec)
+                    if recorded_at is not None
+                    else None
+                )
+                absolute_end = (
+                    recorded_at + timedelta(seconds=moment.end_sec)
+                    if recorded_at is not None
+                    else None
+                )
+                matches.append(
+                    {
+                        "video_id": video_id,
+                        "store_id": recording.get("store_id"),
+                        "camera_id": recording.get("camera_id"),
+                        "recorded_at": recording.get("recorded_at"),
+                        "scene_id": moment.scene_id,
+                        "start_sec": moment.start_sec,
+                        "end_sec": moment.end_sec,
+                        "recorded_start_at": (
+                            absolute_start.isoformat()
+                            if absolute_start is not None
+                            else None
+                        ),
+                        "recorded_end_at": (
+                            absolute_end.isoformat()
+                            if absolute_end is not None
+                            else None
+                        ),
+                        "score": moment.score,
+                        "summary": moment.summary,
+                        "graph_scenes": overlap_by_moment.get(index, []),
+                    }
+                )
+        matches.sort(
+            key=lambda item: (
+                -float(item["score"]),
+                str(item.get("recorded_start_at") or ""),
+                str(item["video_id"]),
+            )
+        )
+        return {
+            "query": query,
+            "recordings_considered": len(recordings),
+            "searched_video_ids": searched_video_ids,
+            "skipped_unsearchable_video_ids": skipped_video_ids,
+            "failures": failures,
+            "matches": matches[:MAX_COLLECTION_MATCHES],
+        }
 
     @tool(
         name="get_video_overview",
@@ -118,6 +257,8 @@ def build_qa_tools(
 
     return [
         search_video_moments,
+        list_recordings,
+        search_recordings,
         get_video_overview,
         list_video_entities,
         get_entity_timeline,
@@ -126,6 +267,14 @@ def build_qa_tools(
         find_entity_connections,
         find_scenes_overlapping_moments,
     ]
+
+
+def _parse_recorded_at(value: object) -> datetime | None:
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, str) and value:
+        return datetime.fromisoformat(value)
+    return None
 
 
 def build_pipeline_tools(

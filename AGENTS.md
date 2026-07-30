@@ -60,5 +60,7 @@ SceneThread is a Python 3.11 Streamlit application that ingests video, extracts 
 - Avoid fake success fallbacks; fixture mode must be explicit.
 - Preserve a safe, user-visible execution trace showing the Strands stage and sponsor
   handoff without exposing chain-of-thought.
-- Treat collection-level and cross-video surveillance search as a stretch goal. The
-  current QA interface is scoped to one selected `video_id`.
+- Preserve collection-level QA: recording discovery is scoped by `RecordingScope`, each
+  sponsor search remains bounded per video, and every cross-video citation carries its
+  `video_id`.
+- Keep anonymous person labels video-local; never infer biometric identity across clips.

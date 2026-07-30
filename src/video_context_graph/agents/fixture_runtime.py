@@ -7,6 +7,7 @@ from video_context_graph.contracts import (
     GraphWriteResult,
     IngestionRequest,
     IngestionResult,
+    RecordingScope,
     SearchRequest,
     SearchResults,
     ServiceHealth,
@@ -49,6 +50,7 @@ class FixtureGraphService:
     def __init__(self, bundle: FixtureBundle) -> None:
         self._bundle = bundle
         self._extraction: GraphExtraction | None = None
+        self._metadata: VideoGraphMetadata | None = None
 
     @property
     def extraction(self) -> GraphExtraction:
@@ -62,6 +64,7 @@ class FixtureGraphService:
         if metadata.video_id != self._bundle.segments.video_id:
             raise ValueError(f"unknown fixture video_id: {metadata.video_id}")
         self._extraction = extraction.model_copy(deep=True)
+        self._metadata = metadata.model_copy(deep=True)
         tags = {tag for scene in extraction.scenes for tag in scene.tags}
         node_count = 1 + len(extraction.scenes) + len(extraction.entities) + len(
             extraction.events
@@ -83,6 +86,42 @@ class FixtureGraphService:
             node_count=node_count,
             relationship_count=relationship_count,
         )
+
+    def list_recordings(self, scope: RecordingScope) -> list[dict]:
+        metadata = self._metadata
+        if metadata is None or metadata.store_id != scope.store_id:
+            return []
+        if scope.camera_ids and metadata.camera_id not in scope.camera_ids:
+            return []
+        if scope.video_ids and metadata.video_id not in scope.video_ids:
+            return []
+        if metadata.recorded_at is None:
+            if scope.recorded_from is not None or scope.recorded_to is not None:
+                return []
+        elif (
+            scope.recorded_from is not None
+            and metadata.recorded_at < scope.recorded_from
+        ) or (
+            scope.recorded_to is not None
+            and metadata.recorded_at >= scope.recorded_to
+        ):
+            return []
+        return [
+            {
+                "video_id": metadata.video_id,
+                "title": metadata.title,
+                "store_id": metadata.store_id,
+                "camera_id": metadata.camera_id,
+                "recorded_at": (
+                    metadata.recorded_at.isoformat()
+                    if metadata.recorded_at is not None
+                    else None
+                ),
+                "duration_sec": metadata.duration_sec,
+                "status": "READY",
+                "search_available": metadata.search_available,
+            }
+        ]
 
     def get_video_overview(self, video_id: str) -> dict:
         self._validate_video(video_id)

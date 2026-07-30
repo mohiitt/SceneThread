@@ -7,7 +7,7 @@ handoff visibility before choosing the final demo.
 |---|---|---|---:|---:|---:|---|---|---|
 | Planning meeting fixture | Meeting | Fixture | 2 | 3 | 2 | Validated local adapter | Grounded saved answer | Passing |
 | W3C Sintel trailer | Story/movie | Full live | 6 | 6 | 7 | 38 nodes / 68 relationships in Neo4j | 98% chronological answer with 6 citations | Passing |
-| Staged multi-day retail footage | Surveillance/retail | Not run | — | — | — | Needs collection metadata | Needs cross-video search | Candidate |
+| Staged multi-day retail footage | Surveillance/retail | Not run | — | — | — | Metadata/search ready | Awaiting recorded clips | Candidate |
 
 For each future candidate, verify:
 

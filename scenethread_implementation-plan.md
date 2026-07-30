@@ -42,10 +42,11 @@ Build a video agent that ingests raw video, understands what is shown, said, hea
   results, and a grounded chronological answer with six timestamp citations.
 - The pipeline trace visibly records the coordinator and sponsor handoffs. The current UI
   does not show the QA agent's internal tool-call trace.
-- Live direct-URL ingestion is verified. Streamlit browser-upload persistence is not yet
-  connected.
-- QA remains scoped to one selected video. Multi-day surveillance search remains a
-  stretch goal described in `docs/surveillance_demo.md`.
+- Live direct-URL ingestion is verified, and Streamlit browser uploads are persisted
+  under the configured data directory before ingestion.
+- Collection QA now discovers recordings by store/camera/time, searches multiple
+  TwelveLabs assets, aligns cross-video graph evidence, and emits absolute timestamps.
+  Cross-video biometric/person re-identification remains outside scope.
 
 ---
 

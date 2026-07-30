@@ -162,6 +162,10 @@ class SceneThreadCoordinator:
             duration_sec=validated.segments.duration_sec,
             external_ids=external_ids,
             pipeline_version=self._pipeline_version,
+            store_id=request.store_id,
+            camera_id=request.camera_id,
+            recorded_at=request.recorded_at,
+            search_available=validated.search_available,
         )
 
     @staticmethod

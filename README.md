@@ -29,8 +29,10 @@ expose model chain-of-thought.
 - Pegasus timestamped segmentation and Marengo semantic search.
 - Strict Pydantic validation for scenes, entities, events, and relationships.
 - Idempotent Neo4j nodes and relationships through fixed parameterized Cypher.
-- Grounded QA using eight bounded, read-only video and graph tools.
-- Timestamp evidence, confidence, limitations, and safe pipeline traces.
+- Grounded single-video and collection QA using ten bounded, read-only tools.
+- Cross-video discovery by store, camera, absolute time window, or explicit video IDs.
+- Evidence with video/camera provenance, relative timestamps, and absolute clock times.
+- Confidence, limitations, partial-search failures, and safe pipeline traces.
 - Session-backed graph tables and a candidate-video Test Lab.
 - Local job and provider-artifact caching under `data/runs/<video_id>/`.
 
@@ -61,9 +63,14 @@ The sidebar offers three modes:
 3. **Full live services** — real TwelveLabs, Strands/OpenAI, and Neo4j calls.
 
 Full-live URL input must be a publicly reachable direct HTTP(S) media URL, not a YouTube,
-Vimeo, Google Drive preview, or other webpage. The configured MVP duration limit is 15
-minutes. Direct-URL ingestion is live-validated; persistence for browser-uploaded files
-still needs to be connected before relying on the upload option.
+Vimeo, Google Drive preview, or other webpage. Browser uploads are persisted under
+`data/uploads/<video_id>/` before ingestion. The configured MVP duration limit is 15
+minutes.
+
+For surveillance footage, give every clip the same stable `store_id`, the physical
+`camera_id`, and its timezone-aware recording start. After ingesting multiple clips,
+choose **Recording collection** in **Ask** and optionally filter cameras and an absolute
+time range.
 
 ## Verification
 
@@ -87,9 +94,11 @@ is a recorded validation result, not a fixed output for other videos.
 
 ## Current scope and limitations
 
-- QA is scoped to one selected `video_id`.
-- Cross-video/date-range search, camera metadata, wall-clock timestamps, and person
-  re-identification are not implemented.
+- Collection QA discovers a bounded set of indexed videos and searches each searchable
+  TwelveLabs asset; it reports unsearchable videos and per-video failures.
+- Anonymous labels remain video-local. Cross-video face/person re-identification is not
+  implemented, so the system must not assume `person_1` in two clips is the same person.
+- Day-long recordings should be divided into clips below the configured 15-minute limit.
 - The UI graph explorer currently renders validated extraction tables; the graph service
   also provides a bounded visualization payload builder, but the interactive PyVis view
   is not wired into Streamlit.

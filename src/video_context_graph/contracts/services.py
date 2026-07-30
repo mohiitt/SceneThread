@@ -11,6 +11,7 @@ from video_context_graph.contracts.video import (
     GraphWriteResult,
     IngestionRequest,
     IngestionResult,
+    RecordingScope,
     SearchRequest,
     SearchResults,
     SegmentCollection,
@@ -50,6 +51,8 @@ class GraphService(Protocol):
         metadata: VideoGraphMetadata,
         extraction: GraphExtraction,
     ) -> GraphWriteResult: ...
+
+    def list_recordings(self, scope: RecordingScope) -> list[JsonRecord]: ...
 
     def get_video_overview(self, video_id: str) -> JsonRecord: ...
 
@@ -97,6 +100,10 @@ class GraphService(Protocol):
 @runtime_checkable
 class QuestionAnsweringService(Protocol):
     def answer_question(self, *, video_id: str, question: str) -> AnswerResult: ...
+
+    def answer_collection_question(
+        self, *, scope: RecordingScope, question: str
+    ) -> AnswerResult: ...
 
     def health_check(self) -> ServiceHealth: ...
 

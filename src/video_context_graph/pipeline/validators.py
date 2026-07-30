@@ -70,6 +70,11 @@ def ingestion_request_fingerprint(
         "source": source_identity,
         "title": request.title,
         "domain_hint": request.domain_hint,
+        "store_id": request.store_id,
+        "camera_id": request.camera_id,
+        "recorded_at": (
+            request.recorded_at.isoformat() if request.recorded_at is not None else None
+        ),
         "pipeline_version": pipeline_version,
     }
     encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")

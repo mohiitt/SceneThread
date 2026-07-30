@@ -1,3 +1,5 @@
+from datetime import UTC, datetime
+
 import pytest
 
 from video_context_graph.contracts.extraction import GraphExtraction
@@ -36,6 +38,24 @@ def test_mapper_creates_stable_deduplicated_batches() -> None:
         }
     ]
     assert first.video["twelvelabs_asset_id"] == "asset-1"
+
+
+def test_mapper_preserves_collection_recording_metadata() -> None:
+    collection_metadata = metadata().model_copy(
+        update={
+            "store_id": "store_sf",
+            "camera_id": "entrance",
+            "recorded_at": datetime(2026, 7, 30, 9, tzinfo=UTC),
+            "search_available": False,
+        }
+    )
+
+    video = map_graph(collection_metadata, load_fixture_bundle().extraction).video
+
+    assert video["store_id"] == "store_sf"
+    assert video["camera_id"] == "entrance"
+    assert video["recorded_at"] == "2026-07-30T09:00:00+00:00"
+    assert video["search_available"] is False
 
 
 def test_entity_identity_uses_video_type_and_normalized_name() -> None:
