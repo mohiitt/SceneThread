@@ -2,7 +2,7 @@
   "query": "Who was assigned to the metrics dashboard?",
   "results": [
     {
-      "scene_id": "scene_002",
+      "scene_id": null,
       "start_sec": 12.5,
       "end_sec": 38.0,
       "score": 0.91,

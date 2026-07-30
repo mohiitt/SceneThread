@@ -66,8 +66,8 @@ class SegmentCollection(BaseModel):
 class IngestionResult(BaseModel):
     video_id: str = Field(min_length=1)
     asset_id: str = Field(min_length=1)
-    index_id: str = Field(min_length=1)
-    indexed_asset_id: str = Field(min_length=1)
+    index_id: str | None = None
+    indexed_asset_id: str | None = None
     segmentation_task_id: str = Field(min_length=1)
     segments: SegmentCollection
     search_available: bool = True
@@ -76,6 +76,8 @@ class IngestionResult(BaseModel):
     def validate_video_identity(self) -> IngestionResult:
         if self.video_id != self.segments.video_id:
             raise ValueError("ingestion result and segment collection video IDs must match")
+        if self.search_available and (not self.index_id or not self.indexed_asset_id):
+            raise ValueError("search-available results require index_id and indexed_asset_id")
         return self
 
 

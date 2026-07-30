@@ -19,6 +19,10 @@ Fixture and live implementations must satisfy `VideoIntelligenceService`. The fi
 implementation reads the validated `SegmentCollection`; the live implementation performs
 TwelveLabs upload, polling, segmentation, and Marengo indexing.
 
+When segmentation succeeds but Marengo indexing fails, `ingest_video` still returns the
+validated segments with `search_available=False`; `index_id` and `indexed_asset_id` are
+then `None`. The coordinator may continue with graph extraction and writing.
+
 ## Developer B: graph
 
 ```python

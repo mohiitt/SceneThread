@@ -12,6 +12,7 @@ from video_context_graph.contracts.video import GraphWriteResult, IngestionResul
 class PipelineJob(BaseModel):
     run_id: str
     video_id: str
+    request_fingerprint: str = ""
     status: str
     current_stage: str
     stages: dict[str, str]
